@@ -36,7 +36,7 @@ class CityViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = City.objects.select_related("country")
+    queryset = City.objects.all()
 
     serializer_class = CitySerializer
 
@@ -47,9 +47,14 @@ class CityViewSet(
             return CityRetrieveSerializer
         return CitySerializer
 
+    def get_queryset(self):
+        if self.action in ("list", "retrieve"):
+            return self.queryset.select_related("country")
+        return self.queryset
+
 
 class AirportViewSet(viewsets.ModelViewSet):
-    queryset = Airport.objects.select_related("closest_big_city__country")
+    queryset = Airport.objects.all()
     serializer_class = AirportSerializer
 
     def get_serializer_class(self):
@@ -58,6 +63,13 @@ class AirportViewSet(viewsets.ModelViewSet):
         elif self.action == "retrieve":
             return AirportRetrieveSerializer
         return AirportSerializer
+
+    def get_queryset(self):
+        if self.action == "list":
+            return self.queryset.select_related("closest_big_city")
+        elif self.action == "retrieve":
+            return self.queryset.select_related("closest_big_city__country")
+        return self.queryset
 
 
 class AirplaneTypeViewSet(
@@ -72,7 +84,7 @@ class AirplaneTypeViewSet(
 
 
 class AirplaneViewSet(viewsets.ModelViewSet):
-    queryset = Airplane.objects.select_related("airplane_type")
+    queryset = Airplane.objects.all()
     serializer_class = AirplaneSerializer
 
     def get_serializer_class(self):
@@ -82,32 +94,49 @@ class AirplaneViewSet(viewsets.ModelViewSet):
             return AirplaneRetrieveSerializer
         return AirplaneSerializer
 
+    def get_queryset(self):
+        if self.action in ("list", "retrieve"):
+            return self.queryset.select_related("airplane_type")
+        return self.queryset
 
 class CrewViewSet(viewsets.ModelViewSet):
     queryset = Crew.objects.all()
     serializer_class = CrewSerializer
 
 class RouteViewSet(viewsets.ModelViewSet):
-    queryset = Route.objects.select_related(
-        "source__closest_big_city__country",
-        "destination__closest_big_city__country",
-    )
+    queryset = Route.objects.all()
     serializer_class = RouteSerializer
 
-    def get_serializer_class(self):
+    @staticmethod
+    def params_to_ints(query_string):
+        return [int(param) for param in query_string.split(",")]
+
+    def get_queryset(self):
+        queryset = self.queryset
+
         if self.action == "list":
-            return RouteListSerializer
+            queryset = queryset.select_related(
+                "source__closest_big_city",
+                "destination__closest_big_city",
+            )
+
+            city = self.request.query_params.get("city")
+            if city:
+                city = self.params_to_ints(city)
+                queryset = queryset.filter(source__closest_big_city__id__in=city)
+
         elif self.action == "retrieve":
-            return RouteRetrieveSerializer
-        return RouteSerializer
+            queryset = queryset.select_related(
+                "source__closest_big_city__country",
+                "destination__closest_big_city__country",
+            )
+
+        return queryset
+
 
 
 class FlightViewSet(viewsets.ModelViewSet):
-    queryset = Flight.objects.select_related(
-        "route__source__closest_big_city__country",
-        "route__destination__closest_big_city__country",
-        "airplane__airplane_type"
-    ).prefetch_related("crew", "tickets")
+    queryset = Flight.objects.all()
     serializer_class = FlightSerializer
 
     def get_serializer_class(self):
@@ -117,6 +146,24 @@ class FlightViewSet(viewsets.ModelViewSet):
             return FlightRetrieveSerializer
         return FlightSerializer
 
+    def get_queryset(self):
+        queryset = self.queryset.prefetch_related("crew", "tickets")
+
+        if self.action == "list":
+            return queryset.select_related(
+                "route__source__closest_big_city",
+                "route__destination__closest_big_city",
+                "airplane",
+            )
+        if self.action == "retrieve":
+            return queryset.select_related(
+                "route__source__closest_big_city__country",
+                "route__destination__closest_big_city__country",
+                "airplane__airplane_type",
+            )
+        return queryset
+
+
 class OrderViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
@@ -124,15 +171,20 @@ class OrderViewSet(
     viewsets.GenericViewSet
 ):
     serializer_class = OrderSerializer
+    queryset = Order.objects.all()
 
     def get_queryset(self):
-        return Order.objects.filter(
-            user=self.request.user
-        ).prefetch_related(
-            "tickets__flight__airplane",
-            "tickets__flight__route__source",
-            "tickets__flight__route__destination",
-        )
+        queryset = Order.objects.filter(user=self.request.user)
+
+        if self.action == "list":
+            return queryset.prefetch_related("tickets")
+        if self.action == "retrieve":
+            return queryset.prefetch_related(
+                "tickets__flight__airplane",
+                "tickets__flight__route__source__closest_big_city",
+                "tickets__flight__route__destination__closest_big_city",
+            )
+        return queryset
 
     def get_serializer_class(self):
         if self.action == "list":
