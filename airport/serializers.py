@@ -158,7 +158,7 @@ class FlightRetrieveSerializer(FlightSerializer):
 class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
-        fields = ("id", "row", "seat", "flight", "order")
+        fields = ("id", "row", "seat", "flight")
 
     def validate(self, attrs):
         Ticket.validate_seat(
@@ -176,6 +176,9 @@ class TicketSerializer(serializers.ModelSerializer):
 
 class TicketDetailSerializer(TicketSerializer):
     flight = FlightListSerializer(read_only=True)
+
+    class Meya(TicketSerializer.Meta):
+        fields = TicketSerializer.Meta.fields + ("order",)
 
 
 class OrderSerializer(serializers.ModelSerializer):
