@@ -1,6 +1,10 @@
 from datetime import datetime
 
-from rest_framework import viewsets, mixins
+from rest_framework import viewsets, mixins, status
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+
 from airport.utils.helpers import params_to_ints
 
 from airport.models import (
@@ -19,7 +23,7 @@ from airport.serializers import (
     AirplaneTypeSerializer,
     AirplaneSerializer, AirplaneListSerializer, AirplaneRetrieveSerializer, CrewSerializer, RouteSerializer,
     RouteListSerializer, RouteRetrieveSerializer, FlightSerializer, FlightListSerializer, FlightRetrieveSerializer,
-    OrderSerializer, OrderListSerializer, OrderRetrieveSerializer, OrderCreateSerializer
+    OrderSerializer, OrderListSerializer, OrderRetrieveSerializer, OrderCreateSerializer, AirplaneImageSerializer
 )
 
 
@@ -95,6 +99,8 @@ class AirplaneViewSet(viewsets.ModelViewSet):
             return AirplaneListSerializer
         elif self.action == "retrieve":
             return AirplaneRetrieveSerializer
+        elif self.action == "upload_image":
+            return AirplaneImageSerializer
         return AirplaneSerializer
 
     def get_queryset(self):
@@ -108,6 +114,20 @@ class AirplaneViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @action(
+        methods=["POST",],
+        detail=True,
+        permission_classes=[IsAdminUser,],
+        url_path="upload-image"
+    )
+    def upload_image(self, request, pk=None):
+        airplane = self.get_object()
+        serializer = self.get_serializer(airplane, data=request.data)
+        if serializer.is_valid(raise_exeption=True):
+            serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class CrewViewSet(viewsets.ModelViewSet):
     queryset = Crew.objects.all()
     serializer_class = CrewSerializer
@@ -116,6 +136,12 @@ class RouteViewSet(viewsets.ModelViewSet):
     queryset = Route.objects.all()
     serializer_class = RouteSerializer
 
+    def get_serializer_class(self):
+        if self.action == "list":
+            return RouteListSerializer
+        if self.action == "retrieve":
+            return RouteRetrieveSerializer
+        return RouteSerializer
 
     def get_queryset(self):
         queryset = self.queryset
@@ -190,6 +216,7 @@ class OrderViewSet(
 ):
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
         queryset = Order.objects.filter(user=self.request.user)

@@ -121,6 +121,9 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "airport.permissions.IsAdminOrIfAuthenticatedReadOnly",
+    ],
 }
 
 
@@ -134,6 +137,12 @@ SIMPLE_JWT = {
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+MEDIA_URL = "/media/"
+
+MEDIA_ROOT = BASE_DIR / "media"
+
+
 
 
 # Email
