@@ -177,7 +177,7 @@ class TicketSerializer(serializers.ModelSerializer):
 class TicketDetailSerializer(TicketSerializer):
     flight = FlightListSerializer(read_only=True)
 
-    class Meya(TicketSerializer.Meta):
+    class Meta(TicketSerializer.Meta):
         fields = TicketSerializer.Meta.fields + ("order",)
 
 
