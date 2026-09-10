@@ -82,7 +82,7 @@ class AirplaneListSerializer(AirplaneSerializer):
 
 
 class AirplaneRetrieveSerializer(AirplaneSerializer):
-    airplane_type = AirplaneSerializer(read_only=True)
+    airplane_type = AirplaneTypeSerializer(read_only=True)
 
 
 class CrewSerializer(serializers.ModelSerializer):
@@ -130,14 +130,14 @@ class FlightListSerializer(FlightSerializer):
         slug_field="name"
     )
     tickets_available = serializers.SerializerMethodField(
-        method_name="tickets_available"
+        method_name="get_tickets_available"
     )
 
     class Meta(FlightSerializer.Meta):
         fields = FlightSerializer.Meta.fields + ("tickets_available",)
 
 
-    def tickets_available(self, obj):
+    def get_tickets_available(self, obj):
         return obj.airplane.capacity - obj.tickets.count()
 
 class FlightRetrieveSerializer(FlightSerializer):
