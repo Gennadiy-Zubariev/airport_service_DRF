@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from rest_framework import viewsets, mixins
+from airport.utils.helpers import params_to_ints
 
 from airport.models import (
     Country, City, Airport, AirplaneType, Airplane, Crew, Route, Flight, Order,
@@ -95,9 +98,15 @@ class AirplaneViewSet(viewsets.ModelViewSet):
         return AirplaneSerializer
 
     def get_queryset(self):
+        queryset = self.queryset
         if self.action in ("list", "retrieve"):
-            return self.queryset.select_related("airplane_type")
-        return self.queryset
+            queryset = queryset.select_related("airplane_type")
+        airplane_type = self.request.query_params.get("airplane_type")
+        if airplane_type:
+            airplane_type = params_to_ints(airplane_type)
+            queryset = queryset.filter(airplane_type__id__in=airplane_type)
+
+        return queryset
 
 class CrewViewSet(viewsets.ModelViewSet):
     queryset = Crew.objects.all()
@@ -107,9 +116,6 @@ class RouteViewSet(viewsets.ModelViewSet):
     queryset = Route.objects.all()
     serializer_class = RouteSerializer
 
-    @staticmethod
-    def params_to_ints(query_string):
-        return [int(param) for param in query_string.split(",")]
 
     def get_queryset(self):
         queryset = self.queryset
@@ -119,11 +125,6 @@ class RouteViewSet(viewsets.ModelViewSet):
                 "source__closest_big_city",
                 "destination__closest_big_city",
             )
-
-            city = self.request.query_params.get("city")
-            if city:
-                city = self.params_to_ints(city)
-                queryset = queryset.filter(source__closest_big_city__id__in=city)
 
         elif self.action == "retrieve":
             queryset = queryset.select_related(
@@ -150,13 +151,30 @@ class FlightViewSet(viewsets.ModelViewSet):
         queryset = self.queryset.prefetch_related("crew", "tickets")
 
         if self.action == "list":
-            return queryset.select_related(
+            queryset = queryset.select_related(
                 "route__source__closest_big_city",
                 "route__destination__closest_big_city",
                 "airplane",
             )
+            source = self.request.query_params.get("source")
+            destination = self.request.query_params.get("destination")
+            departure_date = self.request.query_params.get("departure_date")
+            if source:
+                queryset = queryset.filter(
+                    route__source__closest_big_city__name__icontains=source
+                )
+            if destination:
+                queryset = queryset.filter(
+                    route__destination__closest_big_city__name__icontains=destination
+                )
+            if departure_date:
+                queryset = queryset.filter(
+                    departure_time__date=datetime.strptime(
+                        departure_date, "%Y-%m-%d"
+                    ).date()
+                )
         if self.action == "retrieve":
-            return queryset.select_related(
+            queryset = queryset.select_related(
                 "route__source__closest_big_city__country",
                 "route__destination__closest_big_city__country",
                 "airplane__airplane_type",
