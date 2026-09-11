@@ -96,6 +96,12 @@ class CrewSerializer(serializers.ModelSerializer):
         fields = ("id", "first_name", "last_name", "role")
 
 class RouteSerializer(serializers.ModelSerializer):
+    source = serializers.PrimaryKeyRelatedField(
+        queryset=Airport.objects.select_related("closest_big_city")
+    )
+    destination = serializers.PrimaryKeyRelatedField(
+        queryset=Airport.objects.select_related("closest_big_city")
+    )
     class Meta:
         model = Route
         fields = ("id", "source", "destination", "distance")
@@ -116,6 +122,13 @@ class RouteRetrieveSerializer(RouteSerializer):
 
 
 class FlightSerializer(serializers.ModelSerializer):
+    route = serializers.PrimaryKeyRelatedField(
+        queryset=Route.objects.select_related(
+            "source__closest_big_city",
+            "destination__closest_big_city"
+        )
+    )
+
     class Meta:
         model = Flight
         fields = (
