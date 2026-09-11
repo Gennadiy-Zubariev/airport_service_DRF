@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from airport_service import settings
 
 from airport.utils.helpers import airplane_image_path
+from airport.utils.helpers import validate_row, validate_seat
 
 
 class Country(models.Model):
@@ -90,7 +91,7 @@ class Crew(models.Model):
         ordering = ("last_name", "first_name")
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name} {self.role}"
 
 
 class Route(models.Model):
@@ -107,6 +108,9 @@ class Route(models.Model):
     def __str__(self):
         return f"FROM {self.source} - TO {self.destination} ({self.distance} km.)"
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 class Flight(models.Model):
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name="flights")
@@ -139,10 +143,10 @@ class Ticket(models.Model):
     row = models.IntegerField()
     seat = models.IntegerField()
     flight = models.ForeignKey(
-        Flight, on_delete=models.CASCADE, related_name="tickets"
+        Flight, on_delete=models.CASCADE, related_name="f_tickets"
     )
     order = models.ForeignKey(
-        Order, on_delete=models.CASCADE, related_name="tickets"
+        Order, on_delete=models.CASCADE, related_name="o_tickets"
     )
 
     class Meta:
@@ -157,27 +161,10 @@ class Ticket(models.Model):
             f"(row: {self.row}, seat: {self.seat})"
         )
 
-    @staticmethod
-    def validate_seat(seat: int, num_seats: int, error_to_raise):
-        if not (1 <= seat <= num_seats):
-            raise error_to_raise(
-                {
-                    "seat": f"seat must be in range [1, {num_seats}] not {seat}"
-                }
-            )
-
-    @staticmethod
-    def validate_row(row: int, num_rows: int, error_to_raise):
-        if not (1 <= row <= num_rows):
-            raise error_to_raise(
-                {
-                    "row": f"row must be in range [1, {num_rows}] not {row}"
-                }
-            )
 
     def clean(self):
-        Ticket.validate_seat(self.seat, self.flight.airplane.seats_in_row, ValidationError)
-        Ticket.validate_row(self.row, self.flight.airplane.rows, ValidationError)
+        validate_seat(self.seat, self.flight.airplane.seats_in_row, ValidationError)
+        validate_row(self.row, self.flight.airplane.rows, ValidationError)
 
     def save(self, *args, **kwargs):
         self.full_clean()

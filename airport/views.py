@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from django.db.models.query import Prefetch
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -8,7 +9,7 @@ from rest_framework.response import Response
 from airport.utils.helpers import params_to_ints
 
 from airport.models import (
-    Country, City, Airport, AirplaneType, Airplane, Crew, Route, Flight, Order,
+    Country, City, Airport, AirplaneType, Airplane, Crew, Route, Flight, Order, Ticket,
 
 )
 
@@ -151,6 +152,10 @@ class RouteViewSet(viewsets.ModelViewSet):
                 "source__closest_big_city",
                 "destination__closest_big_city",
             )
+            city = self.request.query_params.get("city")
+            if city:
+                city = params_to_ints(city)
+                queryset = queryset.filter(source__closest_big_city__id__in=city)
 
         elif self.action == "retrieve":
             queryset = queryset.select_related(
@@ -174,7 +179,7 @@ class FlightViewSet(viewsets.ModelViewSet):
         return FlightSerializer
 
     def get_queryset(self):
-        queryset = self.queryset.prefetch_related("crew", "tickets")
+        queryset = self.queryset.prefetch_related("crew", "f_tickets")
 
         if self.action == "list":
             queryset = queryset.select_related(
@@ -222,12 +227,19 @@ class OrderViewSet(
         queryset = Order.objects.filter(user=self.request.user)
 
         if self.action == "list":
-            return queryset.prefetch_related("tickets")
+            return queryset.prefetch_related("o_tickets")
         if self.action == "retrieve":
             return queryset.prefetch_related(
-                "tickets__flight__airplane",
-                "tickets__flight__route__source__closest_big_city",
-                "tickets__flight__route__destination__closest_big_city",
+                Prefetch(
+                    "o_tickets",
+                    queryset=Ticket.objects.select_related(
+                        "flight__airplane",
+                        "flight__route__source__closest_big_city",
+                        "flight__route__destination__closest_big_city",
+                    ).prefetch_related(
+                        "flight__crew",
+                    ),
+                )
             )
         return queryset
 

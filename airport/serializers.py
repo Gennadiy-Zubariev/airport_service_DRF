@@ -12,6 +12,7 @@ from airport.models import (
     Order,
     Ticket
 )
+from airport.utils.helpers import validate_row, validate_seat
 
 
 class CountrySerializer(serializers.ModelSerializer):
@@ -150,13 +151,14 @@ class FlightListSerializer(FlightSerializer):
     tickets_available = serializers.SerializerMethodField(
         method_name="get_tickets_available"
     )
+    crew = serializers.StringRelatedField(many=True)
 
     class Meta(FlightSerializer.Meta):
         fields = FlightSerializer.Meta.fields + ("tickets_available",)
 
 
     def get_tickets_available(self, obj):
-        return obj.airplane.capacity - obj.tickets.count()
+        return obj.airplane.capacity - obj.f_tickets.count()
 
 class FlightRetrieveSerializer(FlightSerializer):
     route = RouteRetrieveSerializer(read_only=True)
@@ -170,7 +172,7 @@ class FlightRetrieveSerializer(FlightSerializer):
         fields = FlightSerializer.Meta.fields + ("taken_seats",)
 
     def get_taken_seats(self, obj):
-        return list(obj.tickets.values_list("row", "seat"))
+        return list(obj.f_tickets.values_list("row", "seat"))
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -179,12 +181,12 @@ class TicketSerializer(serializers.ModelSerializer):
         fields = ("id", "row", "seat", "flight")
 
     def validate(self, attrs):
-        Ticket.validate_seat(
+        validate_seat(
             attrs["seat"],
             attrs["flight"].airplane.seats_in_row,
             serializers.ValidationError
         )
-        Ticket.validate_row(
+        validate_row(
             attrs["row"],
             attrs["flight"].airplane.rows,
             serializers.ValidationError
@@ -212,19 +214,22 @@ class OrderListSerializer(OrderSerializer):
         fields = OrderSerializer.Meta.fields + ("tickets",)
 
     def get_tickets_count(self, obj):
-        return obj.tickets.count()
+        return obj.o_tickets.count()
 
 class OrderRetrieveSerializer(OrderSerializer):
-    tickets = TicketDetailSerializer(read_only=True, many=True)
+    tickets = TicketDetailSerializer(source="o_tickets", read_only=True, many=True)
+
+    class Meta(OrderSerializer.Meta):
+        fields = OrderSerializer.Meta.fields + ("tickets",)
 
 class OrderCreateSerializer(OrderSerializer):
-    tickets = TicketSerializer(many=True)
+    tickets = TicketSerializer(source="o_tickets", many=True)
 
     class Meta(OrderSerializer.Meta):
         fields = OrderSerializer.Meta.fields + ("tickets",)
 
     def create(self, validation_data):
-        tickets_data = validation_data.pop("tickets")
+        tickets_data = validation_data.pop("o_tickets")
         with transaction.atomic():
             order = Order.objects.create(**validation_data)
             for ticket in tickets_data:
