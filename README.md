@@ -1,109 +1,118 @@
 # Airport API Service
 
-Django + Django REST Framework API для авіакомпанії: країни, міста, аеропорти,
-типи літаків, літаки, екіпаж, маршрути, рейси та замовлення з квитками.
-Автентифікація — JWT (кастомна модель користувача з логіном по email).
+API service for airport management written on DRF.
 
-## Стек
+## Features
 
-- Python 3.13, Django 6.1.1, Django REST Framework 3.18.1
-- `djangorestframework-simplejwt` — JWT-автентифікація
-- `drf-spectacular` — автогенерація OpenAPI-схеми та Swagger/Redoc UI
-- `pillow` — обробка зображень (фото літаків)
-- PostgreSQL 16 (`psycopg`), Docker + docker-compose
+- JWT authenticated
+- Admin panel /admin/
+- Documentation is located at /api/doc/swagger/
+- Managing orders and tickets
+- Creating airports with countries and cities
+- Creating airplanes with types
+- Adding flights with crew, routes
+- Filtering flights, routes and airplanes
+- Pagination for all list endpoints
 
-## Встановлення та запуск (Docker)
+## Installing using GitHub
 
-Проєкт запускається через Docker Compose: контейнер з Django-застосунком
-(`airport`) і контейнер з PostgreSQL (`airport_app_db`).
+Install PostgreSQL and create db
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/<your-username>/airport_API_service.git
 cd airport_API_service
-
-cp .env_example .env   # заповнити своїми значеннями (SECRET_KEY, POSTGRES_*)
-
-docker compose up -d --build
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-API буде доступне на `http://127.0.0.1:8000/`.
-
-Створити суперкористувача (опційно, для доступу в Django admin):
+Set environment variables:
 
 ```bash
-docker compose exec airport python manage.py createsuperuser
+set DB_HOST=<your db hostname>
+set DB_NAME=<your db name>
+set DB_USER=<your db username>
+set DB_PASSWORD=<your db user password>
+set SECRET_KEY=<your secret key>
 ```
 
-### Наповнення тестовими даними
+Apply migrations and run server:
 
 ```bash
-docker compose exec airport python manage.py seed_db
+python manage.py migrate
+python manage.py runserver
 ```
 
-## Документація API
+## Run with Docker
 
-- Swagger UI: `/api/doc/swagger/`
-- Redoc: `/api/doc/redoc/`
-- OpenAPI-схема (JSON/YAML): `/api/doc/`
+Docker should be installed
 
-## Автентифікація
+```bash
+cp .env_example .env  # fill with your values
+docker-compose build
+docker-compose up
+```
 
-Реєстрація та отримання JWT-токенів:
+Create superuser (optional):
 
-| Метод | Ендпоінт | Опис |
-|---|---|---|
-| POST | `/api/user/register/` | Реєстрація нового користувача |
-| POST | `/api/user/login/` | Отримати пару access/refresh токенів |
-| POST | `/api/user/refresh/` | Оновити access-токен |
-| POST | `/api/user/verify/` | Перевірити валідність токена |
-| GET/PUT/PATCH | `/api/user/me/` | Переглянути/оновити власний профіль |
+```bash
+docker-compose exec airport python manage.py createsuperuser
+```
 
-Для запитів до захищених ендпоінтів передавайте заголовок:
+Load test data (optional):
+
+```bash
+docker-compose exec airport python manage.py seed_db
+```
+
+## Getting access
+
+- Create user via /api/user/register/
+- Get access token via /api/user/login/
+- Refresh token via /api/user/token/refresh/
+- Verify token via /api/user/token/verify/
+- Manage profile via /api/user/me/
+
+Use the token in Authorization header:
 
 ```
 Authorization: Bearer <access_token>
 ```
 
-## Основні ендпоінти
+## API Endpoints
 
-Базовий шлях: `/api/airport/`
+Base path: `/api/airport/`
 
-| Ресурс | Ендпоінт | Права |
+| Resource | Endpoint | Allowed methods |
 |---|---|---|
-| Країни | `countries/` | читання — будь-який автентифікований, запис — admin |
-| Міста | `cities/` | те саме |
-| Аеропорти | `airports/` | те саме |
-| Типи літаків | `airplane-types/` | те саме |
-| Літаки | `airplanes/` | те саме; `POST airplanes/{id}/upload-image/` — лише admin |
-| Екіпаж | `crew/` | те саме |
-| Маршрути | `routes/` | те саме |
-| Рейси | `flights/` | те саме |
-| Замовлення | `orders/` | лише автентифіковані, кожен бачить тільки свої замовлення |
+| Countries | `countries/` | GET, POST (admin) |
+| Cities | `cities/` | GET, POST (admin) |
+| Airports | `airports/` | full CRUD (write — admin) |
+| Airplane Types | `airplane-types/` | GET, POST (admin) |
+| Airplanes | `airplanes/` | full CRUD (write — admin) |
+| Crew | `crew/` | full CRUD (write — admin) |
+| Routes | `routes/` | full CRUD (write — admin) |
+| Flights | `flights/` | full CRUD (write — admin) |
+| Orders | `orders/` | GET, POST (own orders only) |
 
-Усі list-ендпоінти пагіновані (`PageNumberPagination`, 10 записів на сторінку) —
-відповідь має вигляд `{"count", "next", "previous", "results"}`.
+## Filters
 
-### Фільтри
-
-- `GET /api/airport/routes/?city=<назва>` — маршрути за назвою міста відправлення (icontains)
-- `GET /api/airport/flights/?source=<назва>&destination=<назва>&departure_date=YYYY-MM-DD`
+- `GET /api/airport/routes/?city=<name>` — routes by source city name
+- `GET /api/airport/flights/?source=<name>&destination=<name>&departure_date=YYYY-MM-DD`
 - `GET /api/airport/airplanes/?airplane_type=<id1,id2>`
 
-## Тести
+## API Documentation
+
+- Swagger UI: `/api/doc/swagger/`
+- Redoc: `/api/doc/redoc/`
+- OpenAPI schema: `/api/doc/`
+
+## DB Structure
+
+models_schema/airport_models.png
+
+## Tests
 
 ```bash
-docker compose exec airport python manage.py test airport.tests
+docker-compose exec airport python manage.py test airport.tests
 ```
-
-## Обмеження частоти запитів (throttling)
-
-- Анонімні користувачі: 10 запитів/день
-- Автентифіковані користувачі: 100 запитів/день
-
-## Схема БД
-
-ER-діаграма моделей: [`models_chema/airport_models.png`](models_chema/airport_models.png).
-
-## Форматування коду
-
-Стиль коду підтримується `ruff` (конфіг — `ruff.toml`, `line-length = 79`).
