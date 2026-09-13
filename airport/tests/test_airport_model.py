@@ -2,7 +2,18 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 
-from airport.models import Ticket, Flight, AirplaneType, Airplane, Country, City, Airport, Route, Order
+from airport.models import (
+    Ticket,
+    Flight,
+    AirplaneType,
+    Airplane,
+    Country,
+    City,
+    Airport,
+    Route,
+    Order,
+)
+
 
 class TestRouteModel(TestCase):
     def setUp(self):
@@ -22,9 +33,8 @@ class TestRouteModel(TestCase):
         self.route = Route.objects.create(
             source=self.airport_source,
             destination=self.airport_destination,
-            distance=1000
+            distance=1000,
         )
-
 
     def test_unique_route(self):
 
@@ -32,8 +42,9 @@ class TestRouteModel(TestCase):
             Route.objects.create(
                 source=self.airport_source,
                 destination=self.airport_destination,
-                distance=1000
+                distance=1000,
             )
+
 
 class TicketModelTest(TestCase):
     def setUp(self):
@@ -130,5 +141,5 @@ class TicketModelTest(TestCase):
             seat=13,
             flight=flight,
             order=self.order,
-            )
+        )
         self.assertIsNotNone(ticket.pk)

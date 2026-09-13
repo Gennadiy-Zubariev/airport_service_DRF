@@ -14,21 +14,13 @@ from airport.models import (
     City,
     Airport,
     Route,
-    Order
+    Order,
 )
 
 from airport.serializers import (
-    CountrySerializer,
-    CitySerializer,
-    CityListSerializer,
-    CityRetrieveSerializer,
-    AirportSerializer,
-    AirportListSerializer,
-    AirportRetrieveSerializer,
-    AirplaneTypeSerializer,
-    AirplaneSerializer, AirplaneListSerializer, AirplaneRetrieveSerializer, CrewSerializer, RouteSerializer,
-    RouteListSerializer, RouteRetrieveSerializer, FlightSerializer, FlightListSerializer, FlightRetrieveSerializer,
-    OrderSerializer, OrderListSerializer, OrderRetrieveSerializer, OrderCreateSerializer, AirplaneImageSerializer
+    AirplaneListSerializer,
+    RouteListSerializer,
+    FlightListSerializer,
 )
 
 
@@ -37,8 +29,10 @@ FLIGHT_URL = reverse("airport:flight-list")
 AIRPLANE_URL = reverse("airport:airplane-list")
 ROUTE_URL = reverse("airport:route-list")
 
+
 def flight_detail_url(flight_id):
     return reverse("airport:flight-detail", args=[flight_id])
+
 
 def order_detail_url(order_id):
     return reverse("airport:order-detail", args=[order_id])
@@ -57,8 +51,7 @@ class AuthenticatedAirportAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(
-            email="test@test.test",
-            password="testpassword"
+            email="test@test.test", password="testpassword"
         )
         self.client.force_authenticate(self.user)
 
@@ -90,7 +83,6 @@ class AuthenticatedAirportAPITest(TestCase):
             airplane_type=self.airplane_type,
         )
 
-
         self.flight = Flight.objects.create(
             route=self.route,
             airplane=self.airplane,
@@ -114,9 +106,7 @@ class AuthenticatedAirportAPITest(TestCase):
 
     def test_create_order(self):
         payload = {
-            "tickets": [
-                {"row": 1, "seat": 9, "flight": self.flight.id}
-            ]
+            "tickets": [{"row": 1, "seat": 9, "flight": self.flight.id}]
         }
         result = self.client.post(TICKET_URL, payload, format="json")
         self.assertEqual(result.status_code, status.HTTP_201_CREATED)
@@ -144,12 +134,9 @@ class AuthenticatedAirportAPITest(TestCase):
     def test_tickets_available(self):
         order = Order.objects.create(user=self.user)
         num_tickets = 3
-        for  i in range(num_tickets):
+        for i in range(num_tickets):
             Ticket.objects.create(
-                flight=self.flight,
-                row=1,
-                seat=i + 1,
-                order=order
+                flight=self.flight, row=1, seat=i + 1, order=order
             )
         result = self.client.get(FLIGHT_URL)
         self.assertEqual(
@@ -162,22 +149,17 @@ class AuthenticatedAirportAPITest(TestCase):
         num_tickets = 3
         for i in range(num_tickets):
             Ticket.objects.create(
-                flight=self.flight,
-                row=1,
-                seat=i + 1,
-                order=order
+                flight=self.flight, row=1, seat=i + 1, order=order
             )
         result = self.client.get(flight_detail_url(self.flight.id))
         self.assertEqual(
             result.data["taken_seats"],
-            list(self.flight.f_tickets.values_list("row", "seat"))
+            list(self.flight.f_tickets.values_list("row", "seat")),
         )
 
     def test_validation_seat_in_ticket_serializer(self):
         payload = {
-            "tickets": [
-                {"row": 1, "seat": 99, "flight": self.flight.id}
-            ]
+            "tickets": [{"row": 1, "seat": 99, "flight": self.flight.id}]
         }
         result = self.client.post(TICKET_URL, payload, format="json")
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
@@ -185,9 +167,7 @@ class AuthenticatedAirportAPITest(TestCase):
 
     def test_validation_row_in_ticket_serializer(self):
         payload = {
-            "tickets": [
-                {"row": 99, "seat": 1, "flight": self.flight.id}
-            ]
+            "tickets": [{"row": 99, "seat": 1, "flight": self.flight.id}]
         }
         result = self.client.post(TICKET_URL, payload, format="json")
         self.assertEqual(result.status_code, status.HTTP_400_BAD_REQUEST)
@@ -197,19 +177,15 @@ class AuthenticatedAirportAPITest(TestCase):
         airplane_type_1 = AirplaneType.objects.create(name="Embraer")
         airplane_type_2 = AirplaneType.objects.create(name="Boeing")
         airplane_1 = Airplane.objects.create(
-            name="A34",
-            rows=10,
-            seats_in_row=5,
-            airplane_type=airplane_type_1
+            name="A34", rows=10, seats_in_row=5, airplane_type=airplane_type_1
         )
         airplane_2 = Airplane.objects.create(
-            name="A34",
-            rows=10,
-            seats_in_row=5,
-            airplane_type=airplane_type_2
+            name="A34", rows=10, seats_in_row=5, airplane_type=airplane_type_2
         )
 
-        result = self.client.get(AIRPLANE_URL, {"airplane_type": airplane_type_1.id})
+        result = self.client.get(
+            AIRPLANE_URL, {"airplane_type": airplane_type_1.id}
+        )
 
         serializer_1 = AirplaneListSerializer(airplane_1)
         serializer_2 = AirplaneListSerializer(airplane_2)
@@ -217,43 +193,42 @@ class AuthenticatedAirportAPITest(TestCase):
         self.assertIn(serializer_1.data, result.data["results"])
         self.assertNotIn(serializer_2.data, result.data["results"])
 
-
     def test_flight_filter_by_source_destination_departure_date(self):
         source_airport_1 = Airport.objects.create(
-            name="Boryspil",
-            closest_big_city=self.city_kyiv)
+            name="Boryspil", closest_big_city=self.city_kyiv
+        )
         sourse_airport_2 = Airport.objects.create(
-            name="Danylo Halytskyi",
-            closest_big_city=self.city_lviv)
+            name="Danylo Halytskyi", closest_big_city=self.city_lviv
+        )
         destination_airport_1 = Airport.objects.create(
-            name="Danylo Halytskyi",
-            closest_big_city=self.city_lviv)
+            name="Danylo Halytskyi", closest_big_city=self.city_lviv
+        )
         destination_airport_2 = Airport.objects.create(
-            name="Boryspil",
-            closest_big_city=self.city_kyiv)
+            name="Boryspil", closest_big_city=self.city_kyiv
+        )
 
         route_1 = Route.objects.create(
             source=source_airport_1,
             destination=destination_airport_1,
-            distance=1000
+            distance=1000,
         )
         route_2 = Route.objects.create(
             source=sourse_airport_2,
             destination=destination_airport_2,
-            distance=1000
+            distance=1000,
         )
 
         flight_1 = Flight.objects.create(
             route=route_1,
             airplane=self.airplane,
             departure_time="2026-09-17T11:00:00Z",
-            arrival_time="2026-09-17T14:00:00Z"
+            arrival_time="2026-09-17T14:00:00Z",
         )
         flight_2 = Flight.objects.create(
             route=route_2,
             airplane=self.airplane,
             departure_time="2026-09-16T08:00:00Z",
-            arrival_time="2026-09-16T10:30:00Z"
+            arrival_time="2026-09-16T10:30:00Z",
         )
 
         serializer_1 = FlightListSerializer(flight_1)
@@ -270,10 +245,11 @@ class AuthenticatedAirportAPITest(TestCase):
             self.assertNotIn(serializer_2.data, result.data["results"])
 
         with self.subTest("filter by departure_date"):
-            result = self.client.get(FLIGHT_URL, {"departure_date": "2026-09-17"})
+            result = self.client.get(
+                FLIGHT_URL, {"departure_date": "2026-09-17"}
+            )
             self.assertIn(serializer_1.data, result.data["results"])
             self.assertNotIn(serializer_2.data, result.data["results"])
-
 
     def test_route_filter_by_city(self):
         city_odesa = City.objects.create(name="Odesa", country=self.country)
@@ -287,7 +263,7 @@ class AuthenticatedAirportAPITest(TestCase):
             distance=500,
         )
 
-        result = self.client.get(ROUTE_URL, {"city": self.city_lviv.id})
+        result = self.client.get(ROUTE_URL, {"city": self.city_lviv.name})
 
         serializer_1 = RouteListSerializer(self.route)
         serializer_2 = RouteListSerializer(other_route)
@@ -354,7 +330,9 @@ class AdminAirportAPITest(TestCase):
         )
         self.client.force_authenticate(admin)
 
-        create_result = self.client.post(FLIGHT_URL, self.payload, format="json")
+        create_result = self.client.post(
+            FLIGHT_URL, self.payload, format="json"
+        )
         self.assertEqual(create_result.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Flight.objects.count(), 1)
 
@@ -372,4 +350,3 @@ class AdminAirportAPITest(TestCase):
             flight.departure_time.isoformat(),
             "2026-09-18T09:00:00+00:00",
         )
-

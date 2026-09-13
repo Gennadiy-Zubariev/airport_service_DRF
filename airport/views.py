@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import datetime, date
 
 from django.db.models.query import Prefetch
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -9,8 +10,16 @@ from rest_framework.response import Response
 from airport.utils.helpers import params_to_ints
 
 from airport.models import (
-    Country, City, Airport, AirplaneType, Airplane, Crew, Route, Flight, Order, Ticket,
-
+    Country,
+    City,
+    Airport,
+    AirplaneType,
+    Airplane,
+    Crew,
+    Route,
+    Flight,
+    Order,
+    Ticket,
 )
 
 from airport.serializers import (
@@ -22,9 +31,21 @@ from airport.serializers import (
     AirportListSerializer,
     AirportRetrieveSerializer,
     AirplaneTypeSerializer,
-    AirplaneSerializer, AirplaneListSerializer, AirplaneRetrieveSerializer, CrewSerializer, RouteSerializer,
-    RouteListSerializer, RouteRetrieveSerializer, FlightSerializer, FlightListSerializer, FlightRetrieveSerializer,
-    OrderSerializer, OrderListSerializer, OrderRetrieveSerializer, OrderCreateSerializer, AirplaneImageSerializer
+    AirplaneSerializer,
+    AirplaneListSerializer,
+    AirplaneRetrieveSerializer,
+    CrewSerializer,
+    RouteSerializer,
+    RouteListSerializer,
+    RouteRetrieveSerializer,
+    FlightSerializer,
+    FlightListSerializer,
+    FlightRetrieveSerializer,
+    OrderSerializer,
+    OrderListSerializer,
+    OrderRetrieveSerializer,
+    OrderCreateSerializer,
+    AirplaneImageSerializer,
 )
 
 
@@ -32,7 +53,7 @@ class CountryViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet,
 ):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
@@ -42,7 +63,7 @@ class CityViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet,
 ):
     queryset = City.objects.all()
 
@@ -84,11 +105,10 @@ class AirplaneTypeViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet,
 ):
     queryset = AirplaneType.objects.all()
     serializer_class = AirplaneTypeSerializer
-
 
 
 class AirplaneViewSet(viewsets.ModelViewSet):
@@ -116,10 +136,14 @@ class AirplaneViewSet(viewsets.ModelViewSet):
         return queryset
 
     @action(
-        methods=["POST",],
+        methods=[
+            "POST",
+        ],
         detail=True,
-        permission_classes=[IsAdminUser,],
-        url_path="upload-image"
+        permission_classes=[
+            IsAdminUser,
+        ],
+        url_path="upload-image",
     )
     def upload_image(self, request, pk=None):
         airplane = self.get_object()
@@ -128,10 +152,23 @@ class AirplaneViewSet(viewsets.ModelViewSet):
             serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "airplane_type",
+                type=int,
+                description="Filter by airplane_type id (ex. ?airplane_type=2",
+            )
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
 
 class CrewViewSet(viewsets.ModelViewSet):
     queryset = Crew.objects.all()
     serializer_class = CrewSerializer
+
 
 class RouteViewSet(viewsets.ModelViewSet):
     queryset = Route.objects.all()
@@ -154,8 +191,9 @@ class RouteViewSet(viewsets.ModelViewSet):
             )
             city = self.request.query_params.get("city")
             if city:
-                city = params_to_ints(city)
-                queryset = queryset.filter(source__closest_big_city__id__in=city)
+                queryset = queryset.filter(
+                    source__closest_big_city__name__icontains=city
+                )
 
         elif self.action == "retrieve":
             queryset = queryset.select_related(
@@ -165,6 +203,17 @@ class RouteViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "city",
+                type=str,
+                description="Filter by city (ex. ?city=Lviv",
+            )
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 class FlightViewSet(viewsets.ModelViewSet):
@@ -196,7 +245,9 @@ class FlightViewSet(viewsets.ModelViewSet):
                 )
             if destination:
                 queryset = queryset.filter(
-                    route__destination__closest_big_city__name__icontains=destination
+                    route__destination__closest_big_city__name__icontains=(
+                        destination
+                    )
                 )
             if departure_date:
                 queryset = queryset.filter(
@@ -212,12 +263,35 @@ class FlightViewSet(viewsets.ModelViewSet):
             )
         return queryset
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "departure_date",
+                type=date,
+                description="Filter by departure_date "
+                            "(ex. ?departure_date='2026-09-13')",
+            ),
+            OpenApiParameter(
+                "source",
+                type=str,
+                description="Filter by source (ex. ?source=Lviv)",
+            ),
+            OpenApiParameter(
+                "destination",
+                type=str,
+                description="Filter by destination (ex. ?destination=Kyiv)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
 
 class OrderViewSet(
     mixins.ListModelMixin,
     mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet,
 ):
     serializer_class = OrderSerializer
     queryset = Order.objects.all()
@@ -238,6 +312,7 @@ class OrderViewSet(
                         "flight__route__destination__closest_big_city",
                     ).prefetch_related(
                         "flight__crew",
+                        "flight__f_tickets",
                     ),
                 )
             )
@@ -254,9 +329,3 @@ class OrderViewSet(
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-
-
-
-
-
-

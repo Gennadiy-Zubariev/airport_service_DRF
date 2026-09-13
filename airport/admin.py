@@ -10,7 +10,7 @@ from airport.models import (
     Route,
     Flight,
     Order,
-    Ticket
+    Ticket,
 )
 
 

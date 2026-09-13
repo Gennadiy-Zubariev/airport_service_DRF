@@ -61,8 +61,16 @@ ROUTES = [
     ("Warsaw Chopin Airport", "Boryspil International Airport", 690),
     ("Boryspil International Airport", "Berlin Brandenburg Airport", 1150),
     ("Berlin Brandenburg Airport", "Charles de Gaulle Airport", 880),
-    ("Charles de Gaulle Airport", "John F. Kennedy International Airport", 5850),
-    ("Lviv Danylo Halytskyi International Airport", "Warsaw Chopin Airport", 340),
+    (
+        "Charles de Gaulle Airport",
+        "John F. Kennedy International Airport",
+        5850,
+    ),
+    (
+        "Lviv Danylo Halytskyi International Airport",
+        "Warsaw Chopin Airport",
+        340,
+    ),
 ]
 
 DEMO_USER_EMAIL = "demo@example.com"
@@ -70,7 +78,8 @@ DEMO_USER_PASSWORD = "demo12345"
 
 
 class Command(BaseCommand):
-    help = "Populate the database with demo data for the airport API (idempotent)."
+    help = ("Populate the database with "
+            "demo data for the airport API (idempotent).")
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -150,7 +159,9 @@ class Command(BaseCommand):
         crew = []
         for first_name, last_name, role in CREW:
             member, _ = Crew.objects.get_or_create(
-                first_name=first_name, last_name=last_name, defaults={"role": role}
+                first_name=first_name,
+                last_name=last_name,
+                defaults={"role": role},
             )
             crew.append(member)
         self.stdout.write(f"Crew members: {len(crew)}")
@@ -204,9 +215,7 @@ class Command(BaseCommand):
 
         order = Order.objects.create(user=user)
         flight = flights[0]
-        Ticket.objects.get_or_create(
-            flight=flight, order=order, row=1, seat=1
-        )
+        Ticket.objects.get_or_create(flight=flight, order=order, row=1, seat=1)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Demo user: {DEMO_USER_EMAIL} / {DEMO_USER_PASSWORD} "
