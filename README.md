@@ -19,7 +19,7 @@ API service for airport management written on DRF.
 Install PostgreSQL and create db
 
 ```bash
-git clone https://github.com/<your-username>/airport_API_service.git
+git clone https://github.com/Gennadiy-Zubariev/airport_service_DRF.git
 cd airport_API_service
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -109,7 +109,15 @@ Base path: `/api/airport/`
 
 ## DB Structure
 
-models_schema/airport_models.png
+![Model chema](models_schema/airport_models.png)
+
+## Screenshots
+
+![Flight list](screenshots/flight_list.png)
+
+![Flight instance](screenshots/flight_instance.png)
+
+![Swagger](screenshots/swagger.png)
 
 ## Tests
 
