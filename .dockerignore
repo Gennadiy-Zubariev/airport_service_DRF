@@ -1,0 +1,14 @@
+Dockerfile
+docker-compose.yaml
+.venv
+.github
+.flake8
+README.md
+.gitignore
+.env_example
+.env
+ruff.toml
+requirements_develop.txt
+CLAUDE.md
+models_chema
+media
