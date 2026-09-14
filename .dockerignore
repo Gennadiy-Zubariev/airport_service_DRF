@@ -10,5 +10,5 @@ README.md
 ruff.toml
 requirements_develop.txt
 CLAUDE.md
-models_chema
+models_schema
 media
