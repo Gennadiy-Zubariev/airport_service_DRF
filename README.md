@@ -117,7 +117,7 @@ Base path: `/api/airport/`
 
 ![Flight instance](screenshots/flight_instance.png)
 
-![Swagger](screenshots/swagger.png)
+![Swagger](screenshots/doc_swagger.png)
 
 ## Tests
 
