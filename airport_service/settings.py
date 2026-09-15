@@ -158,7 +158,7 @@ REST_FRAMEWORK = {
 # spectacular settings
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Bus station API",
+    "TITLE": "Airport API",
     "DESCRIPTION": "Order tickets for your airport",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
